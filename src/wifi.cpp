@@ -8,12 +8,32 @@ IPAddress subnet(255, 255, 255, 0);
 
 bool run_wifi_init = false;
 bool ota_initiated = false;
+bool dhcp_get_client_name = true;
+
+void getDHCPAttention(){
+  const uint16_t port = 80;
+  const char * host = "google.com"; // ip or dns
+
+  Serial.print("Connecting to ");
+  Serial.println(host);
+
+  // Use WiFiClient class to create TCP connections
+  WiFiClient client;
+
+  while (!client.connect(host, port)) {
+    Serial.println("Connection failed.");
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
 
 void TaskWifi(void *pvParameters){
     // Setup here
     pinMode(2, OUTPUT);
     wifi_init();
     // wifi.once(1, [](){run_wifi_init = true;});
+    wifi.attach(1, [](){
+      dhcp_get_client_name = true;
+    });
 
     // Loop here
     while(true){
@@ -22,9 +42,15 @@ void TaskWifi(void *pvParameters){
           ArduinoOTA.handle();
         }
         if(WiFi.status() == WL_CONNECTED){
-          Serial.println(WiFi.localIP().toString());
+          if(!otaProgressing)
+          TELNET(TelnetStream.printf("Stack size : %d \n", uxTaskGetStackHighWaterMark(NULL)));
+          // log_i("Stack size : %d", uxTaskGetStackHighWaterMark(NULL));
+          if(dhcp_get_client_name){
+            getDHCPAttention();
+            dhcp_get_client_name = false;
+            TELNET(TelnetStream.println("Pass DHCP"));
+          }
         }
-        // log_i("Stack size : %d", uxTaskGetStackHighWaterMark(NULL));
         delay(1000);
     }
 }
@@ -36,18 +62,6 @@ void wifi_init(){
     WiFi.setHostname("ESP-OTA");
     WiFi.begin(ssid, pass);
     
-    const uint16_t port = 80;
-    const char * host = "google.com"; // ip or dns
-
-    Serial.print("Connecting to ");
-    Serial.println(host);
-
-    // Use WiFiClient class to create TCP connections
-    WiFiClient client;
-
-    if (!client.connect(host, port)) {
-      Serial.println("Connection failed.");
-    }
     wifiInitiated = true;
     timer_wifi_init = millis();
   }
@@ -56,6 +70,7 @@ void wifi_init(){
   }
   run_wifi_init = false;
 }
+
 
 void WiFiEvent(WiFiEvent_t event){
     switch(event) {
@@ -74,7 +89,6 @@ void WiFiEvent(WiFiEvent_t event){
             if(wifi.active()) wifi.detach();
             OTASetup();
             // WiFi.enableIpV6();
-            log_i("Local IP: %s", WiFi.localIP().toString());
             break;
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             log_i("STA Got IP");
@@ -85,6 +99,9 @@ void WiFiEvent(WiFiEvent_t event){
             log_i("Gateway IP: %s", WiFi.gatewayIP().toString());
             log_i("DNS1 IP: %s", WiFi.dnsIP(0).toString());
             log_i("DNS1 IP: %s", WiFi.dnsIP(1).toString());
+            Serial.println(WiFi.localIP().toString());
+
+            TelnetStream.begin(23);
             break;
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             log_i("STA Disconnected");
@@ -124,7 +141,7 @@ void onErrorFn(ota_error_t res){
 }
 
 void onProgressFn(unsigned int progress, unsigned int total){
-
+  otaProgressing = true;
 }
 
 void onEndFn(){

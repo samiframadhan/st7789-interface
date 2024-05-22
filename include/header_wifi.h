@@ -1,24 +1,30 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <Ticker.h>
+#include <TelnetStream.h>
 
 #ifndef SERIAL_ROS
   #define SER Serial
 #endif
 
+#define TELNET(fn) {\
+  if(!otaProgressing)\
+  fn;\
+}
+
 // put function declarations here:
-int myFunction(int, int);
+void getDHCPAttention();
 const char* ssid = "Nintendo";
 const char* pass = "papahbaik";
 bool wifiInitiated = false;
 bool wifiConnected = false;
+bool otaProgressing = false;
 bool last_stat = LOW;
 u16_t timer_wifi_init = 0;
 u8_t ledfadecount = 0;
 
 Ticker led;
 Ticker wifi;
-Ticker OTA;
 
 void WiFiEvent(WiFiEvent_t event);
 void wifi_init();
