@@ -19,6 +19,12 @@ TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
 TaskHandle_t wifi_ota_task_handle;
 
 void setup(void) {
+  lv_init();
+
+  // lv_tick_set_cb(millis); /* TODO: Trying to find where to include this function call */
+  
+  // lv_display_t *p; /* TODO: Trying to find where to include this typedef(/) */
+
   tft.init();
   tft.setRotation(2);
   Serial.begin(115200);

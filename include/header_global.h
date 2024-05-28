@@ -1,5 +1,7 @@
 #include "Arduino.h"
 #include "Ticker.h"
+#include <lvgl.h>
+#include <demos/lv_demos.h>
 
 #include <SPI.h>
 
